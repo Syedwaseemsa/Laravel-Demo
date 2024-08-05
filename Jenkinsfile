@@ -23,8 +23,9 @@ pipeline {
         stage('Checkout') { 
 
             steps { 
-
-                git credentialsId: 'Github-ID', url: 'https://github.com/Syedwaseemsa/Laravel-Demo' 
+	    	git branch: 'main',
+		
+                	git credentialsId: 'Github-ID', url: 'https://github.com/Syedwaseemsa/Laravel-Demo' 
 
             } 
 
