@@ -34,9 +34,10 @@ pipeline {
 
         stage('Install Dependencies') { 
 
-            steps { 
-
-                sh 'composer install' 
+            steps {
+        sh 'php -r "copy(\'https://getcomposer.org/installer\', \'composer-setup.php\');"'
+        sh 'php composer-setup.php'
+        sh 'php composer.phar install' 
 
             } 
 
