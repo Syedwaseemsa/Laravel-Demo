@@ -36,10 +36,10 @@ pipeline {
 
             steps {
                 sh 'sudo apt-get update && sudo apt-get install -y libxml2-dev'
-                sh 'sudo docker-php-ext-install xml dom'
-                sh 'sudo php -r "copy(\'https://getcomposer.org/installer\', \'composer-setup.php\');"'
-                sh 'sudo php composer-setup.php'
-                sh 'sudo php composer.phar install' 
+                sh 'docker-php-ext-install xml dom'
+                sh 'php -r "copy(\'https://getcomposer.org/installer\', \'composer-setup.php\');"'
+                sh 'php composer-setup.php'
+                sh 'php composer.phar install' 
 
             } 
 
