@@ -1,28 +1,38 @@
-# Use the official PHP image with Apache
 FROM php:8.0-apache
 
-# Install PHP extensions
-RUN docker-php-ext-install mysqli pdo pdo_mysql
+# Install PHP extensions and dependencies
+RUN apt-get update && apt-get install -y \
+    libxml2-dev \
+    zip \
+    unzip \
+    && docker-php-ext-install mysqli pdo pdo_mysql xml dom
 
-# Copy the application files
-COPY . /var/www/html/
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Install Composer
-RUN curl -sS https://getcomposer.org/installer | php
-RUN mv composer.phar /usr/local/bin/composer
+# Copy composer files and install dependencies
+COPY composer.json composer.lock ./
+RUN composer install --no-scripts --no-autoloader
 
-# Install application dependencies
-RUN composer install
+# Copy the rest of the application
+COPY . .
+
+# Generate autoloader and optimize
+RUN composer dump-autoload --optimize
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html/storage
+
+# Update Apache configuration to listen on port 8000
+RUN sed -i 's/Listen 80/Listen 8000/' /etc/apache2/ports.conf \
+    && sed -i 's/<VirtualHost *:80>/<VirtualHost *:8000>/' /etc/apache2/sites-available/000-default.conf
 
 # Expose port 8000
 EXPOSE 8000
-
-# Update Apache configuration to listen on port 8000
-RUN sed -i 's/Listen 80/Listen 8000/' /etc/apache2/ports.conf
-RUN sed -i 's/<VirtualHost *:80>/<VirtualHost *:8000>/' /etc/apache2/sites-available/000-default.conf
 
 # Start Apache
 CMD ["apache2-foreground"]

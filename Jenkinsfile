@@ -35,9 +35,11 @@ pipeline {
         stage('Install Dependencies') { 
 
             steps {
-        sh 'php -r "copy(\'https://getcomposer.org/installer\', \'composer-setup.php\');"'
-        sh 'php composer-setup.php'
-        sh 'php composer.phar install' 
+                sh 'apt-get update && apt-get install -y libxml2-dev'
+                sh 'docker-php-ext-install xml dom'
+                sh 'php -r "copy(\'https://getcomposer.org/installer\', \'composer-setup.php\');"'
+                sh 'php composer-setup.php'
+                sh 'php composer.phar install' 
 
             } 
 
