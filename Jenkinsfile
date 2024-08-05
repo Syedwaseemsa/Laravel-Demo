@@ -1,6 +1,7 @@
 pipeline { 
 
-    agent any 
+    agent {
+        docker { image 'php:8.0-cli' }
 
   
 
