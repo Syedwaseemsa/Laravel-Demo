@@ -13,7 +13,7 @@ pipeline {
         
         stage('Checkout') {
             steps {
-                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-credentials', url: 'https://github.com/Syedwaseemsa/Laravel-Demo.git']])
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'Github-ID', url: 'https://github.com/Syedwaseemsa/Laravel-Demo.git']])
             }
         }
     
@@ -28,7 +28,7 @@ pipeline {
         stage('Push to ECR') {
             steps {
                 script {
-                    withAWS(credentials: 'aws-ecr-credentials', region: "${AWS_DEFAULT_REGION}") {
+                    withAWS(credentials: 'ecr-credentials', region: "${AWS_DEFAULT_REGION}") {
                         sh "aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${REPOSITORY_URI}"
                         sh "docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URI}:$IMAGE_TAG"
                         sh "docker push ${REPOSITORY_URI}:${IMAGE_TAG}"
