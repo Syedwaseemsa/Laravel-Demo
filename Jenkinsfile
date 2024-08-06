@@ -1,44 +1,33 @@
 pipeline {
-    agent {
-        docker { image 'php:8.0-cli' }
-    }
+    agent any
 
     environment {
-        AWS_DEFAULT_REGION = 'us-east-2'
-        ECR_REPOSITORY = 'demo-laravel'
-        ECR_REPOSITORY_URL = '381492028434.dkr.ecr.us-east-2.amazonaws.com/demo-laravel'
-        DOCKER_CREDENTIALS_ID = 'ecr-credentials'  // Update with your actual Jenkins credentials ID
+        AWS_ECR_REPOSITORY_URI = '381492028434.dkr.ecr.us-east-2.amazonaws.com/demo-laravel'
+        IMAGE_NAME = 'lap-app2'
+        AWS_REGION = 'us-east-2' // Change to your region
     }
 
     stages {
-        stage('Checkout') {
+        stage('Clone Repository') {
             steps {
-                git branch: 'main',
-                    credentialsId: 'Github-ID',
-                    url: 'https://github.com/Syedwaseemsa/Laravel-Demo'
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                sh 'apt-get update && apt-get install -y libxml2-dev'
-                sh 'docker-php-ext-install xml dom'
-                sh 'php -r "copy(\'https://getcomposer.org/installer\', \'composer-setup.php\');"'
-                sh 'php composer-setup.php'
-                sh 'php composer.phar install'
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                sh 'vendor/bin/phpunit'
+                git 'https://github.com/syedwaseemsa/laravel-app.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    def dockerImage = docker.build("${ECR_REPOSITORY}:${env.BUILD_ID}")
+                    dockerImage = docker.build("${AWS_ECR_REPOSITORY_URI}:${env.BUILD_ID}")
+                }
+            }
+        }
+
+        stage('Login to Amazon ECR') {
+            steps {
+                script {
+                    sh '''
+                    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ECR_REPOSITORY_URI}
+                    '''
                 }
             }
         }
@@ -46,21 +35,15 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    withAWS(region: "${AWS_DEFAULT_REGION}", credentials: 'aws-credentials-id') {
-                        docker.withRegistry('https://${ECR_REPOSITORY_URL}', DOCKER_CREDENTIALS_ID) {
-                            dockerImage.push('latest')
-                            dockerImage.push(env.BUILD_ID)
-                        }
-                    }
+                    dockerImage.push("${env.BUILD_ID}")
                 }
             }
         }
-    }
 
-    post {
-        always {
-            cleanWs()
+        stage('Clean up') {
+            steps {
+                sh 'docker rmi ${AWS_ECR_REPOSITORY_URI}:${BUILD_ID}'
+            }
         }
     }
 }
-

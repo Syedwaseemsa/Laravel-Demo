@@ -1,38 +1,42 @@
-FROM php:8.0-apache
+# Use an official PHP runtime as a parent image
+FROM php:8.2-fpm-alpine
 
-# Install PHP extensions and dependencies
-RUN apt-get update && apt-get install -y \
-    libxml2-dev \
+# Set the working directory
+WORKDIR /var/www
+
+# Install system dependencies
+RUN apk --no-cache add \
+    git \
+    curl \
+    bash \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
     zip \
-    unzip \
-    && docker-php-ext-install mysqli pdo pdo_mysql xml dom
+    libzip-dev \
+    oniguruma-dev \
+    icu-dev \
+    g++ \
+    make \
+    autoconf
+
+# Install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl zip
 
 # Install Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set working directory
-WORKDIR /var/www/html
-
-# Copy composer files and install dependencies
-COPY composer.json composer.lock ./
-RUN composer install --no-scripts --no-autoloader
-
-# Copy the rest of the application
-COPY . .
-
-# Generate autoloader and optimize
-RUN composer dump-autoload --optimize
+# Copy existing application directory contents
+COPY . /var/www
 
 # Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage
+RUN chown -R www-data:www-data /var/www
 
-# Update Apache configuration to listen on port 8000
-RUN sed -i 's/Listen 80/Listen 8000/' /etc/apache2/ports.conf \
-    && sed -i 's/<VirtualHost *:80>/<VirtualHost *:8000>/' /etc/apache2/sites-available/000-default.conf
+# Change current user to www-data
+USER www-data
 
-# Expose port 8000
+# Expose port 8000 and start php-fpm server
 EXPOSE 8000
+CMD ["php-fpm"]
 
-# Start Apache
-CMD ["apache2-foreground"]
