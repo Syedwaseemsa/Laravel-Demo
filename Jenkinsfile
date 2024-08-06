@@ -2,48 +2,40 @@ pipeline {
     agent any
 
     environment {
-        AWS_ECR_REPOSITORY_URI = '381492028434.dkr.ecr.us-east-2.amazonaws.com/demo-laravel'
-        IMAGE_NAME = 'lap-app2'
-        AWS_REGION = 'us-east-2' // Change to your region
+        AWS_ACCOUNT_ID="381492028434"
+        AWS_DEFAULT_REGION="us-east-2" 
+        IMAGE_REPO_NAME="lar-app2"
+        IMAGE_TAG="${BUILD_NUMBER}"
+        REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
     }
-
+    
     stages {
-        stage('Clone Repository') {
+        
+        stage('Checkout') {
             steps {
-                git 'https://github.com/syedwaseemsa/laravel-app.git'
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-credentials', url: 'https://github.com/.Syedwaseemsa/Laravel-Demo.git']])
             }
         }
-
+    
         stage('Build Docker Image') {
             steps {
                 script {
-                    dockerImage = docker.build("${AWS_ECR_REPOSITORY_URI}:${env.BUILD_ID}")
+                    dockerImage = docker.build "${IMAGE_REPO_NAME}:${IMAGE_TAG}"
                 }
             }
         }
-
-        stage('Login to Amazon ECR') {
+   
+        stage('Push to ECR') {
             steps {
                 script {
-                    sh '''
-                    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ECR_REPOSITORY_URI}
-                    '''
+                    withAWS(credentials: 'aws-ecr-credentials', region: "${AWS_DEFAULT_REGION}") {
+                        sh "aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${REPOSITORY_URI}"
+                        sh "docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URI}:$IMAGE_TAG"
+                        sh "docker push ${REPOSITORY_URI}:${IMAGE_TAG}"
+                    }
                 }
             }
         }
-
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    dockerImage.push("${env.BUILD_ID}")
-                }
-            }
-        }
-
-        stage('Clean up') {
-            steps {
-                sh 'docker rmi ${AWS_ECR_REPOSITORY_URI}:${BUILD_ID}'
-            }
-        }
+        
     }
 }
