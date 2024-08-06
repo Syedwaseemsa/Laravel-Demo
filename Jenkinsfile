@@ -13,7 +13,7 @@ pipeline {
         
         stage('Checkout') {
             steps {
-                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-credentials', url: 'https://github.com/.Syedwaseemsa/Laravel-Demo.git']])
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-credentials', url: 'https://github.com/Syedwaseemsa/Laravel-Demo.git']])
             }
         }
     
