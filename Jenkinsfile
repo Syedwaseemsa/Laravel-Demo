@@ -23,7 +23,16 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Print Working Directory') {
+            steps {
+                script {
+                    sh 'pwd'
+                    sh 'ls -la'
+                }
+            }
+        }
+
+	stage('Build Docker Image') {
             steps {
                 script {
                     dockerImage = docker.build "${IMAGE_REPO_NAME}:${IMAGE_TAG}"
