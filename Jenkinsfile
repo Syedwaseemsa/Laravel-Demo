@@ -10,7 +10,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'Github-ID', url: 'https://github.com/Syedwaseemsa/Laravel-Demo.git']])
@@ -40,7 +39,10 @@ pipeline {
                         }
                     }
                 }
-	stage('Build Docker Image') {
+            }
+        }
+
+        stage('Build Docker Image') {
             steps {
                 script {
                     dockerImage = docker.build "${IMAGE_REPO_NAME}:${IMAGE_TAG}"
@@ -58,6 +60,13 @@ pipeline {
                     }
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            // Archive any reports or logs you want to keep
+            archiveArtifacts artifacts: '**/build/logs/*.log', allowEmptyArchive: true
         }
     }
 }
