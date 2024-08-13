@@ -31,7 +31,16 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Static Code Analysis') {
+            parallel {
+                stage('PHP_CodeSniffer') {
+                    steps {
+                        script {
+                            sh 'vendor/bin/phpcs --standard=PSR12 app || exit 1'
+                        }
+                    }
+                }
+	stage('Build Docker Image') {
             steps {
                 script {
                     dockerImage = docker.build "${IMAGE_REPO_NAME}:${IMAGE_TAG}"
