@@ -23,16 +23,15 @@ pipeline {
             }
         }
 
-        stage('Print Working Directory') {
+        stage('Run Unit Tests') {
             steps {
                 script {
-                    sh 'pwd'
-                    sh 'ls -la'
+                    sh './vendor/bin/phpunit --configuration phpunit.xml'
                 }
             }
         }
 
-	stage('Build Docker Image') {
+        stage('Build Docker Image') {
             steps {
                 script {
                     dockerImage = docker.build "${IMAGE_REPO_NAME}:${IMAGE_TAG}"
@@ -51,7 +50,6 @@ pipeline {
                 }
             }
         }
-
     }
 }
 
