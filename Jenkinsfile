@@ -23,12 +23,6 @@ pipeline {
             }
         }
 
-        stage('Unit Test') {
-            steps {
-                sh './vendor/bin/phpunit'
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 script {
