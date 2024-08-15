@@ -1,0 +1,80 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_ACCOUNT_ID = "381492028434"
+        AWS_DEFAULT_REGION = "us-east-2"
+        IMAGE_REPO_NAME = "demo-laravel"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'composer install'
+            }
+        }
+
+        stage('Run Unit Tests') {
+            steps {
+                sh './vendor/bin/phpunit --configuration phpunit.xml'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    dockerImage = docker.build "${IMAGE_REPO_NAME}:${IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                script {
+                    withAWS(credentials: 'aws-credentials-id', region: "${AWS_DEFAULT_REGION}") {
+                        sh "aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${REPOSITORY_URI}"
+                        sh "docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URI}:${IMAGE_TAG}"
+                        sh "docker push ${REPOSITORY_URI}:${IMAGE_TAG}"
+                    }
+                }
+            }
+        }
+
+        stage('Fetch Secrets and Deploy to ECS') {
+            steps {
+                script {
+                    withAWS(credentials: 'aws-credentials-id', region: "${AWS_DEFAULT_REGION}") {
+                        // Fetch secrets from AWS Secrets Manager
+                        def dbCredentials = sh(script: "aws secretsmanager get-secret-value --secret-id prod/db_credentials --query 'SecretString' --output text", returnStdout: true).trim()
+                        def dbHost = sh(script: "echo ${dbCredentials} | jq -r '.DB_HOST'", returnStdout: true).trim()
+                        def dbUser = sh(script: "echo ${dbCredentials} | jq -r '.DB_USER'", returnStdout: true).trim()
+                        def dbPass = sh(script: "echo ${dbCredentials} | jq -r '.DB_PASS'", returnStdout: true).trim()
+
+                        // Use the fetched environment variables in the deployment
+                        sh """
+                        aws ecs update-service --cluster your-cluster-name --service your-service-name \
+                        --force-new-deployment \
+                        --region ${AWS_DEFAULT_REGION} \
+                        --environment DB_HOST=${dbHost},DB_USER=${dbUser},DB_PASS=${dbPass}
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: '**/build/logs/*.log', allowEmptyArchive: true
+        }
+    }
+}
+
